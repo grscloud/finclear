@@ -1,0 +1,473 @@
+<script setup>
+import { ref, onMounted, computed } from 'vue';
+import { useDeleteConfirm } from '@/composables/useDeleteConfirm';
+import { getExpenses, createExpense, deleteExpense, updateExpenseById, approveExpense,getUploadUrl } from '@/api/expense';
+
+const { confirmDelete } = useDeleteConfirm();
+
+const expenses = ref([]);
+const isDialogVisible = ref(false);
+const isApprovalDialogVisible = ref(false);
+const dialogMode = ref('view'); // 'view' | 'edit' | 'create'
+
+// 审批/状态流转相关
+const approvalAction = ref('');
+const approvalComment = ref('');
+const currentExpenseId = ref(null);
+
+// 字典数据 (用于下拉框)
+const categories = [
+    { label: '一般経費 (General)', value: 'general' },
+    { label: '交通費 (Transportation)', value: 'transportation' }
+];
+
+const invoiceTypes = [
+    { label: '適格請求書 (Qualified)', value: 'qualified' },
+    { label: '適格外 (Non-Qualified)', value: 'non_qualified' }
+];
+
+const isUploading = ref(false); // 上传状态指示器
+
+// 表单初始状态
+const initialForm = () => ({
+    id: null,
+    trans_date: null,
+    vendor_name: '',
+    total_amount: 0,
+    tax_8_amount: 0,
+    tax_10_amount: 0,
+    category: 'general',
+    t_number: '',
+    invoice_type: 'qualified',
+    deduction_rate: 1.0, // 默认 100%
+    purpose: '',
+    transport_details: [],
+    receipts: [] // 👈 初始化附件数组
+});
+
+const formData = ref(initialForm());
+
+// 加载经费列表
+const loadExpenses = async () => {
+    try {
+        const res = await getExpenses({ skip: 0, limit: 100 });
+        expenses.value = res.data || res || [];
+    } catch (error) {
+        console.error('获取经费列表失败:', error);
+    }
+};
+
+onMounted(() => {
+    loadExpenses();
+});
+
+// 新建
+const handleAddExpense = () => {
+    dialogMode.value = 'create';
+    formData.value = initialForm();
+    isDialogVisible.value = true;
+};
+
+// 查看详情
+const handleViewExpense = (expense) => {
+    dialogMode.value = 'view';
+    // 日期需转为 Date 对象给 Calendar 组件使用
+    formData.value = { ...expense, trans_date: new Date(expense.trans_date) };
+    isDialogVisible.value = true;
+};
+
+// 编辑
+const handleEditExpense = (expense) => {
+    dialogMode.value = 'edit';
+    formData.value = { ...expense, trans_date: new Date(expense.trans_date) };
+    isDialogVisible.value = true;
+};
+
+// 删除
+const handleDeleteExpense = (id) => {
+    confirmDelete(`経費申請ID「${id}」を削除しますか？`, async () => {
+        try {
+            await deleteExpense(id);
+            await loadExpenses();
+        } catch (error) {
+            console.error(`删除失败:`, error);
+        }
+    });
+};
+
+// 保存新建或编辑
+const saveExpense = async () => {
+    try {
+        const payload = { ...formData.value };
+        // 格式化日期为 ISO 字符串
+        if (payload.trans_date) {
+            payload.trans_date = new Date(payload.trans_date).toISOString();
+        }
+        
+        // 如果不是交通费，清空明细
+        if (payload.category !== 'transportation') {
+            payload.transport_details = [];
+        }
+
+        if (dialogMode.value === 'create') {
+            await createExpense(payload);
+        } else if (dialogMode.value === 'edit') {
+            await updateExpenseById(payload.id, payload); // 需后端支持
+        }
+        
+        isDialogVisible.value = false;
+        await loadExpenses();
+    } catch (error) {
+        console.error('保存失败:', error);
+    }
+};
+
+// ================= 交通费明细操作 =================
+const addTransportDetail = () => {
+    formData.value.transport_details.push({
+        seq_num: formData.value.transport_details.length + 1,
+        origin: '',
+        destination: '',
+        amount: 0,
+        is_round_trip: false,
+        input_method: 'manual'
+    });
+};
+
+const removeTransportDetail = (index) => {
+    formData.value.transport_details.splice(index, 1);
+    // 重新排序 seq_num
+    formData.value.transport_details.forEach((item, i) => {
+        item.seq_num = i + 1;
+    });
+};
+
+// ================= 审批工作流 =================
+const openApprovalDialog = (expenseId, action) => {
+    currentExpenseId.value = expenseId;
+    approvalAction.value = action;
+    approvalComment.value = '';
+    
+    // 如果是提交或撤销，通常不需要填理由，直接请求
+    if (['submit', 'cancel'].includes(action)) {
+        submitApproval();
+    } else {
+        // 审批通过/驳回，弹窗让用户填备注
+        isApprovalDialogVisible.value = true;
+    }
+};
+
+const submitApproval = async () => {
+    try {
+        const payload = {
+            action: approvalAction.value,
+            comment: approvalComment.value || null
+        };
+        await approveExpense(currentExpenseId.value, payload);
+        isApprovalDialogVisible.value = false;
+        await loadExpenses(); // 刷新列表
+    } catch (error) {
+        console.error('状态操作失败:', error);
+    }
+};
+
+// 弹窗标题
+const dialogHeader = computed(() => {
+    const maps = { 'create': '新規経費申請', 'edit': '経費申請編集', 'view': '経費詳細' };
+    return maps[dialogMode.value];
+});
+
+// 审批操作名称映射
+const actionName = computed(() => {
+    const maps = { 'approve': '承認', 'reject': '却下' };
+    return maps[approvalAction.value] || '';
+});
+
+// 状态 Badge 颜色映射
+const getStatusSeverity = (status) => {
+    const maps = {
+        'draft': 'secondary',
+        'pending': 'warning',
+        'approved': 'success',
+        'rejected': 'danger',
+        'canceled': 'info'
+    };
+    return maps[status] || 'info';
+};
+
+// 3. 编写 S3 直传逻辑
+const onCustomUpload = async (event) => {
+    const file = event.files[0];
+    if (!file) return;
+
+    isUploading.value = true;
+    try {
+        // 第一步：向 FastAPI 请求预签名的 S3 URL 和 key
+        const res = await getUploadUrl(file.name);
+        const { upload_url, s3_key } = res.data || res;
+
+        // 第二步：使用原生 fetch 将文件二进制数据直接 PUT 到 S3 (避开拦截器)
+        const uploadResponse = await fetch(upload_url, {
+            method: 'PUT',
+            body: file,
+            headers: {
+                'Content-Type': file.type // 必须和文件 mime-type 保持一致
+            }
+        });
+
+        if (!uploadResponse.ok) {
+            throw new Error('S3へのアップロードに失敗しました');
+        }
+
+        // 第三步：将上传成功的元数据追加到表单的 receipts 数组中
+        formData.value.receipts.push({
+            original_filename: file.name,
+            mime_type: file.type,
+            file_size: file.size,
+            s3_key: s3_key
+        });
+
+        console.log('S3 直传成功，Key:', s3_key);
+    } catch (error) {
+        console.error('アップロード失敗:', error);
+        // 这里如果你引入了 PrimeVue 的 useToast，可以用 toast 提示
+    } finally {
+        isUploading.value = false;
+    }
+};
+
+// 移除已选的附件
+const removeReceipt = (index) => {
+    formData.value.receipts.splice(index, 1);
+};
+</script>
+
+<template>
+    <div class="card">
+        <div class="font-semibold text-xl mb-4">経費管理</div>
+        
+        <!-- 列表 -->
+        <DataTable :value="expenses" scrollable scrollHeight="500px" tableStyle="min-width: 60rem">
+            <template #header>
+                <div class="flex justify-start mb-2">
+                    <Button label="新規申請" icon="pi pi-plus" @click="handleAddExpense" />
+                </div>
+            </template>
+
+            <Column field="trans_date" header="発生日" style="min-width: 120px">
+                <template #body="{ data }">
+                    {{ new Date(data.trans_date).toLocaleDateString() }}
+                </template>
+            </Column>
+            <Column field="vendor_name" header="支払先" style="min-width: 150px"></Column>
+            <Column field="category" header="カテゴリ" style="min-width: 120px">
+                <template #body="{ data }">
+                    {{ data.category === 'transportation' ? '交通費' : '一般経費' }}
+                </template>
+            </Column>
+            <Column field="total_amount" header="金額" style="min-width: 120px">
+                <template #body="{ data }">
+                    ¥{{ data.total_amount.toLocaleString() }}
+                </template>
+            </Column>
+            <Column field="status" header="ステータス" style="min-width: 120px">
+                <template #body="{ data }">
+                    <Tag :severity="getStatusSeverity(data.status)" :value="data.status.toUpperCase()" />
+                </template>
+            </Column>
+            
+            <Column header="操作" style="min-width: 250px" :frozen="true" alignFrozen="right">
+                <template #body="{ data }">
+                    <div class="flex items-center gap-3 text-sm">
+                        <button @click="handleViewExpense(data)" class="text-gray-500 hover:underline cursor-pointer bg-transparent border-none p-0">詳細</button>
+                        
+                        <!-- 仅草稿和驳回状态可编辑/删除/提交 -->
+                        <template v-if="['draft', 'rejected'].includes(data.status)">
+                            <button @click="handleEditExpense(data)" class="text-blue-500 hover:underline cursor-pointer bg-transparent border-none p-0">編集</button>
+                            <button @click="openApprovalDialog(data.id, 'submit')" class="text-green-500 hover:underline cursor-pointer bg-transparent border-none p-0">提出</button>
+                            <button @click="handleDeleteExpense(data.id)" class="text-red-500 hover:underline cursor-pointer bg-transparent border-none p-0">削除</button>
+                        </template>
+
+                        <!-- 仅待审批状态可审批/驳回/撤销 (实际项目中应结合权限判定当前人是否为审批人) -->
+                        <template v-if="data.status === 'pending'">
+                            <button @click="openApprovalDialog(data.id, 'approve')" class="text-green-600 hover:underline cursor-pointer bg-transparent border-none p-0 font-bold">承認</button>
+                            <button @click="openApprovalDialog(data.id, 'reject')" class="text-orange-500 hover:underline cursor-pointer bg-transparent border-none p-0">却下</button>
+                            <button @click="openApprovalDialog(data.id, 'cancel')" class="text-gray-500 hover:underline cursor-pointer bg-transparent border-none p-0">取下</button>
+                        </template>
+                    </div>
+                </template>
+            </Column>
+        </DataTable>
+
+        <ConfirmDialog />
+
+        <!-- 经费编辑/详情弹窗 -->
+        <Dialog v-model:visible="isDialogVisible" :header="dialogHeader" class="responsive-dialog" :style="{ width: '700px' }" :modal="true">
+            <div class="flex flex-col gap-4 mt-2">
+                
+                <!-- 基础信息 -->
+                <div class="p-4 bg-gray-50 border border-gray-200 rounded grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-2 col-span-2 md:col-span-1">
+                        <label class="font-semibold text-sm">発生日 (Date)*</label>
+                        <Calendar v-model="formData.trans_date" :disabled="dialogMode === 'view'" dateFormat="yy/mm/dd" />
+                    </div>
+                    
+                    <div class="flex flex-col gap-2 col-span-2 md:col-span-1">
+                        <label class="font-semibold text-sm">カテゴリ (Category)*</label>
+                        <Dropdown v-model="formData.category" :options="categories" optionLabel="label" optionValue="value" :disabled="dialogMode === 'view'" />
+                    </div>
+
+                    <div class="flex flex-col gap-2 col-span-2">
+                        <label class="font-semibold text-sm">支払先 (Vendor Name)*</label>
+                        <InputText v-model="formData.vendor_name" :disabled="dialogMode === 'view'" placeholder="例：JR東日本 / Amazon" />
+                    </div>
+
+                    <div class="flex flex-col gap-2 col-span-2 md:col-span-1">
+                        <label class="font-semibold text-sm">合計金額 (Total Amount)*</label>
+                        <InputNumber v-model="formData.total_amount" mode="currency" currency="JPY" locale="ja-JP" :disabled="dialogMode === 'view'" />
+                    </div>
+                </div>
+
+                <!-- 電帳法/发票相关信息 (如果是一般经费用) -->
+                <div v-if="formData.category === 'general'" class="p-4 bg-gray-50 border border-gray-200 rounded grid grid-cols-2 gap-4">
+                    <h3 class="text-sm font-bold text-gray-600 col-span-2 mb-1 border-b pb-1">適格請求書・税情報</h3>
+                    
+                    <div class="flex flex-col gap-2 col-span-2 md:col-span-1">
+                        <label class="font-semibold text-sm">請求書区分</label>
+                        <Dropdown v-model="formData.invoice_type" :options="invoiceTypes" optionLabel="label" optionValue="value" :disabled="dialogMode === 'view'" />
+                    </div>
+
+                    <div class="flex flex-col gap-2 col-span-2 md:col-span-1">
+                        <label class="font-semibold text-sm">登録番号 (T-Number)</label>
+                        <InputText v-model="formData.t_number" :disabled="dialogMode === 'view'" placeholder="例：T1234567890123" />
+                    </div>
+
+                    <div class="flex flex-col gap-2 col-span-2 md:col-span-1">
+                        <label class="font-semibold text-sm">8%対象額</label>
+                        <InputNumber v-model="formData.tax_8_amount" mode="currency" currency="JPY" locale="ja-JP" :disabled="dialogMode === 'view'" />
+                    </div>
+
+                    <div class="flex flex-col gap-2 col-span-2 md:col-span-1">
+                        <label class="font-semibold text-sm">10%対象額</label>
+                        <InputNumber v-model="formData.tax_10_amount" mode="currency" currency="JPY" locale="ja-JP" :disabled="dialogMode === 'view'" />
+                    </div>
+                </div>
+
+                <!-- 交通费明细 -->
+                <div v-if="formData.category === 'transportation'" class="p-4 bg-white border border-blue-200 rounded">
+                    <div class="flex justify-between items-center mb-3 border-b pb-2">
+                        <h3 class="text-sm font-bold text-blue-600">交通費明細</h3>
+                        <Button v-if="dialogMode !== 'view'" label="経路追加" icon="pi pi-plus" size="small" text @click="addTransportDetail" />
+                    </div>
+
+                    <div v-if="formData.transport_details.length === 0" class="text-sm text-gray-400 py-2">明細がありません</div>
+
+                    <div v-for="(detail, index) in formData.transport_details" :key="index" class="flex flex-wrap gap-2 items-end mb-3 p-2 bg-gray-50 rounded">
+                        <div class="flex flex-col gap-1 w-24">
+                            <label class="text-xs">出発 (Origin)</label>
+                            <InputText v-model="detail.origin" :disabled="dialogMode === 'view'" size="small" />
+                        </div>
+                        <div class="flex flex-col gap-1 w-24">
+                            <label class="text-xs">到着 (Dest)</label>
+                            <InputText v-model="detail.destination" :disabled="dialogMode === 'view'" size="small" />
+                        </div>
+                        <div class="flex flex-col gap-1 w-24">
+                            <label class="text-xs">金額</label>
+                            <InputNumber v-model="detail.amount" :disabled="dialogMode === 'view'" size="small" />
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs text-center">往復</label>
+                            <Checkbox v-model="detail.is_round_trip" :binary="true" :disabled="dialogMode === 'view'" class="mt-2 ml-2" />
+                        </div>
+                        <Button v-if="dialogMode !== 'view'" icon="pi pi-trash" severity="danger" text @click="removeTransportDetail(index)" class="ml-auto" />
+                    </div>
+                </div>
+
+                <!-- 把以下这段 HTML 放到 <Dialog> 内部的合适位置（推荐在 目的/备注 字段上方） -->
+                <div class="p-4 bg-gray-50 border border-gray-200 rounded flex flex-col gap-3">
+                    <h3 class="text-sm font-bold text-gray-600 border-b pb-2">添付書類 (Receipts)</h3>
+                    
+                    <!-- 仅在非“查看(view)”模式下显示上传按钮 -->
+                    <div v-if="dialogMode !== 'view'" class="flex items-center gap-3">
+                        <!-- 
+                        mode="basic": 使用极简单按钮模式
+                        customUpload: 开启自定义上传接管，不走默认 action
+                        auto: 选中后立刻触发 uploader 事件
+                        -->
+                        <FileUpload 
+                            mode="basic" 
+                            chooseLabel="ファイルを選択 (領収書等)" 
+                            class="p-button-outlined p-button-sm"
+                            :auto="true" 
+                            customUpload 
+                            @uploader="onCustomUpload" 
+                            :disabled="isUploading"
+                        />
+                        <span v-if="isUploading" class="text-sm text-blue-500 flex items-center gap-1">
+                            <i class="pi pi-spin pi-spinner"></i> アップロード中...
+                        </span>
+                    </div>
+
+                    <!-- 已上传文件列表 -->
+                    <div class="flex flex-col gap-2 max-h-40 overflow-y-auto">
+                        <div 
+                            v-for="(file, index) in formData.receipts" 
+                            :key="index" 
+                            class="flex items-center justify-between bg-white p-2 border border-gray-200 rounded text-sm"
+                        >
+                            <div class="flex items-center gap-2 truncate pr-2">
+                                <i class="pi pi-file text-gray-400"></i>
+                                <span class="font-medium truncate" :title="file.original_filename">
+                                    {{ file.original_filename }}
+                                </span>
+                                <span class="text-xs text-gray-400 flex-shrink-0">
+                                    ({{ (file.file_size / 1024).toFixed(1) }} KB)
+                                </span>
+                            </div>
+                            
+                            <!-- 编辑模式下允许删除 -->
+                            <Button 
+                                v-if="dialogMode !== 'view'" 
+                                icon="pi pi-trash" 
+                                severity="danger" 
+                                text 
+                                rounded 
+                                size="small" 
+                                class="p-0 h-8 w-8"
+                                @click="removeReceipt(index)" 
+                            />
+                        </div>
+                        
+                        <div v-if="formData.receipts.length === 0" class="text-sm text-gray-400 text-center py-2">
+                            添付ファイルはありません。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="font-semibold text-sm">目的/備考 (Purpose)</label>
+                    <Textarea v-model="formData.purpose" rows="3" :disabled="dialogMode === 'view'" placeholder="出張の目的などを入力" />
+                </div>
+            </div>
+
+            <template #footer>
+                <div class="flex justify-end gap-2 mt-4">
+                    <Button label="閉じる" icon="pi pi-times" text @click="isDialogVisible = false" />
+                    <Button v-if="dialogMode !== 'view'" label="保存 (Draft)" icon="pi pi-save" @click="saveExpense" />
+                </div>
+            </template>
+        </Dialog>
+
+        <!-- 审批备注弹窗 -->
+        <Dialog v-model:visible="isApprovalDialogVisible" :header="actionName + '処理'" :style="{ width: '400px' }" :modal="true">
+            <div class="flex flex-col gap-3 pt-4">
+                <label class="text-sm font-semibold">コメント (必須ではない)</label>
+                <Textarea v-model="approvalComment" rows="4" placeholder="承認/却下の理由を入力してください..." class="w-full" />
+            </div>
+            <template #footer>
+                <Button label="キャンセル" text @click="isApprovalDialogVisible = false" />
+                <Button :label="actionName" :severity="approvalAction === 'reject' ? 'danger' : 'success'" @click="submitApproval" />
+            </template>
+        </Dialog>
+    </div>
+</template>

@@ -1,0 +1,54 @@
+/* 仅在移动端强制全屏 */
+@media (max-width: 640px) {
+    .responsive-dialog {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    .permissions-container {
+        max-height: none !important;
+        overflow-y: visible !important;
+    }
+}
+
+/* PC 端默认配置：确保容器正常展示 */
+.permissions-container {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+
+
+
+
+/* src/assets/style/responsive.css */
+
+/* 这里不需要 :deep()，因为它在 body 下，直接写全局类名 */
+
+/* 1. 设置宽度 */
+.profile-menu-panel {
+    width: 220px !important;
+    /* 增加 margin-top 来产生与顶部按钮的间距 */
+    margin-top: 8px !important; 
+}
+
+/* 2. 菜单内部样式 */
+.profile-menu-panel .p-menu-item-link {
+    padding: 0.8rem 1.2rem !important;
+    display: flex;
+    align-items: center;
+}
+
+.profile-menu-panel .p-menu-item-label {
+    letter-spacing: 0.05rem !important;
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+    font-weight: 500 !important;
+}
+
+.profile-menu-panel .p-menuitem-icon {
+    margin-right: 1rem !important;
+}
