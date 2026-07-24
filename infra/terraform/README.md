@@ -178,7 +178,7 @@ Environment differences are controlled exclusively through `terraform.tfvars` an
 | `db_instance_class` | RDS instance class | `db.t4g.micro` |
 | `db_allocated_storage` | Initial storage (GB) | `20` |
 | `db_max_allocated_storage` | Max autoscaling storage (GB) | `100` |
-| `db_engine_version` | PostgreSQL version | `16.6` |
+| `db_engine_version` | PostgreSQL version | `16.9` |
 | `db_backup_retention_period` | Backup retention (days) | `7` |
 | `db_deletion_protection` | RDS deletion protection | `false` (dev) / `true` (prod) |
 | `lambda_memory_size` | Lambda memory (MB) | `1024` |

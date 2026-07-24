@@ -17,3 +17,14 @@ variable "cloudfront_hosted_zone_id" {
   description = "CloudFront distribution hosted zone ID."
   type        = string
 }
+
+variable "name_prefix" {
+  type        = string
+  description = "Prefix for naming resources"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Resource tags"
+  default     = {}
+}

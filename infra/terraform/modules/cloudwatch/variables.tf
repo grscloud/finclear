@@ -11,7 +11,7 @@ variable "lambda_function_name" {
 variable "log_retention_in_days" {
   description = "Log retention period in days."
   type        = number
-  default     = 30
+  default     = 3
 }
 
 variable "tags" {

@@ -13,3 +13,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "name_prefix" {
+  type        = string
+  description = "Prefix used for naming bootstrap resources"
+}

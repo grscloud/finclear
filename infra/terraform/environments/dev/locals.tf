@@ -1,7 +1,6 @@
 locals {
   name_prefix          = "${var.project_name}-${var.environment}"
   lambda_function_name = "${local.name_prefix}-lambda"
-  ssm_prefix           = "/${var.project_name}/${var.environment}"
 
   default_tags = merge(
     {

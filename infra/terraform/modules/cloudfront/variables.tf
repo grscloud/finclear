@@ -36,7 +36,7 @@ variable "api_gateway_domain_name" {
 variable "price_class" {
   description = "CloudFront price class."
   type        = string
-  default     = "PriceClass_200"
+  default     = "PriceClass_100"
 }
 
 variable "tags" {

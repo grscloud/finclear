@@ -1,10 +1,13 @@
-data "aws_route53_zone" "main" {
+resource "aws_route53_zone" "main" {
   name         = var.hosted_zone_name
-  private_zone = false
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-hosted-zone"
+  })
 }
 
 resource "aws_route53_record" "app" {
-  zone_id = data.aws_route53_zone.main.zone_id
+  zone_id = aws_route53_zone.main.zone_id
   name    = var.domain_name
   type    = "A"
 
@@ -16,7 +19,7 @@ resource "aws_route53_record" "app" {
 }
 
 resource "aws_route53_record" "app_ipv6" {
-  zone_id = data.aws_route53_zone.main.zone_id
+  zone_id = aws_route53_zone.main.zone_id
   name    = var.domain_name
   type    = "AAAA"
 

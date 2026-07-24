@@ -83,19 +83,19 @@ variable "db_allocated_storage" {
 variable "db_max_allocated_storage" {
   description = "Maximum allocated storage for autoscaling in GB."
   type        = number
-  default     = 100
+  default     = 50
 }
 
 variable "db_engine_version" {
   description = "PostgreSQL engine version."
   type        = string
-  default     = "16.6"
+  default     = "16.9"
 }
 
 variable "db_backup_retention_period" {
   description = "Number of days to retain automated backups."
   type        = number
-  default     = 7
+  default     = 0
 }
 
 variable "db_deletion_protection" {
@@ -107,7 +107,7 @@ variable "db_deletion_protection" {
 variable "lambda_memory_size" {
   description = "Lambda function memory size in MB."
   type        = number
-  default     = 1024
+  default     = 256
 }
 
 variable "lambda_timeout" {
@@ -137,13 +137,13 @@ variable "lambda_log_level" {
 variable "cloudfront_price_class" {
   description = "CloudFront distribution price class."
   type        = string
-  default     = "PriceClass_200"
+  default     = "PriceClass_100"
 }
 
 variable "log_retention_in_days" {
   description = "CloudWatch log retention period in days."
   type        = number
-  default     = 30
+  default     = 3
 }
 
 variable "ssm_parameter_prefix" {

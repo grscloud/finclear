@@ -1,13 +1,19 @@
+#######################################
+# 1. 创建 S3 存储桶 (通过变量区分前端和发票桶)
+#######################################
 resource "aws_s3_bucket" "buckets" {
   for_each = var.buckets
 
   bucket = each.value.bucket_name
 
-  tags = merge(var.tags, each.value.tags, {
-    Name = each.value.bucket_name
-  })
+  # tags = merge(var.tags, each.value.tags, {
+  #   Name = each.value.bucket_name
+  # })
 }
 
+#######################################
+# 2. 版本控制 (两者都需要)
+#######################################
 resource "aws_s3_bucket_versioning" "buckets" {
   for_each = aws_s3_bucket.buckets
 
@@ -18,6 +24,9 @@ resource "aws_s3_bucket_versioning" "buckets" {
   }
 }
 
+#######################################
+# 3. 服务端加密 (两者都需要)
+#######################################
 resource "aws_s3_bucket_server_side_encryption_configuration" "buckets" {
   for_each = aws_s3_bucket.buckets
 
@@ -31,38 +40,77 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "buckets" {
   }
 }
 
+#######################################
+# 4. 公共访问拦截 (针对不同桶做差异化处理)
+#######################################
 resource "aws_s3_bucket_public_access_block" "buckets" {
   for_each = aws_s3_bucket.buckets
 
   bucket = each.value.id
 
+  # 关键修改：
+  # 如果是前端桶 (frontend)，允许通过 CloudFront OAC 访问，所以不能全封死。
+  # 如果是发票桶 (application)，严格锁死，禁止任何外网直接读取。
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
-  restrict_public_buckets = true
+  restrict_public_buckets = each.key == "frontend" ? false : true 
 }
 
+#######################################
+# 5. 生命周期规则 (区分前端与发票桶)
+#######################################
 resource "aws_s3_bucket_lifecycle_configuration" "buckets" {
   for_each = aws_s3_bucket.buckets
 
   bucket = each.value.id
 
-  rule {
-    id     = "transition-noncurrent-versions"
-    status = "Enabled"
+  # -----------------------------------------------------------------
+  # 规则 A：仅针对【发票桶 (application)】的长期归档策略
+  # -----------------------------------------------------------------
+  dynamic "rule" {
+    for_each = each.key == "application" ? [1] : []
+    content {
+      id     = "invoice-archive-glacier-ir"
+      status = "Enabled"
 
-    filter {}
+      filter {}
 
-    noncurrent_version_transition {
-      noncurrent_days = 30
-      storage_class   = "STANDARD_IA"
-    }
+      # 当前发票：90 天后转入冰川即时检索
+      transition {
+        days          = 90
+        storage_class = "GLACIER_IR"
+      }
 
-    noncurrent_version_expiration {
-      noncurrent_days = 90
+      # 历史版本：30 天后转入冰川即时检索
+      noncurrent_version_transition {
+        noncurrent_days = 30
+        storage_class   = "GLACIER_IR"
+      }
     }
   }
 
+  # -----------------------------------------------------------------
+  # 规则 B：仅针对【前端桶 (frontend)】的清理策略（清理旧版本代码）
+  # -----------------------------------------------------------------
+  dynamic "rule" {
+    for_each = each.key == "frontend" ? [1] : []
+    content {
+      id     = "frontend-cleanup-old-versions"
+      status = "Enabled"
+
+      filter {}
+
+      # 前端代码经常频繁更新，自动清理 30 天以前的旧代码版本，省存储空间
+      noncurrent_version_expiration {
+        noncurrent_days = 30
+      }
+    }
+  }
+
+  # -----------------------------------------------------------------
+  # 规则 C：公共规则（两个桶都需要）：清理上传中断的废弃碎片
+  # -----------------------------------------------------------------
   rule {
     id     = "abort-incomplete-multipart-uploads"
     status = "Enabled"

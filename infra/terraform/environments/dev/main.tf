@@ -1,28 +1,19 @@
 data "aws_caller_identity" "current" {}
 
-data "aws_route53_zone" "main" {
-  name         = var.hosted_zone_name
-  private_zone = false
-}
-
 module "network" {
   source = "../../modules/network"
 
-  name_prefix          = local.name_prefix
+  name_prefix = local.name_prefix
+  aws_region  = var.aws_region
+
   vpc_cidr             = var.vpc_cidr
   public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
   availability_zones   = var.availability_zones
-  tags                 = local.default_tags
-}
 
-module "ssm" {
-  source = "../../modules/ssm"
+  enable_vpc_endpoints = true
 
-  name_prefix      = local.name_prefix
-  parameter_prefix = local.ssm_prefix
-  openai_api_key   = var.openai_api_key
-  tags             = local.default_tags
+  tags = local.default_tags
 }
 
 module "rds" {
@@ -33,7 +24,7 @@ module "rds" {
   security_group_ids      = [module.network.rds_security_group_id]
   db_name                 = var.db_name
   db_username             = var.db_username
-  db_password             = module.ssm.database_password
+  db_password             = var.db_password
   engine_version          = var.db_engine_version
   instance_class          = var.db_instance_class
   allocated_storage       = var.db_allocated_storage
@@ -64,16 +55,15 @@ module "s3" {
   tags = local.default_tags
 }
 
-module "iam" {
-  source = "../../modules/iam"
+  module "iam" {
+    source = "../../modules/iam"
 
-  name_prefix          = local.name_prefix
-  aws_region           = var.aws_region
-  aws_account_id       = data.aws_caller_identity.current.account_id
-  ssm_parameter_prefix = local.ssm_prefix
-  s3_bucket_arns       = values(module.s3.bucket_arns)
-  tags                 = local.default_tags
-}
+    name_prefix    = local.name_prefix
+    aws_region     = var.aws_region
+    aws_account_id = data.aws_caller_identity.current.account_id
+    s3_bucket_arns = values(module.s3.bucket_arns)
+    tags           = local.default_tags
+  }
 
 module "cloudwatch" {
   source = "../../modules/cloudwatch"
@@ -98,7 +88,7 @@ module "lambda" {
   database_endpoint  = module.rds.db_address
   database_name      = var.db_name
   database_user      = var.db_username
-  ssm_parameter_path = local.ssm_prefix
+  database_password  = var.db_password
   bucket_name        = module.s3.application_bucket_name
   log_level          = var.lambda_log_level
   log_group_name     = module.cloudwatch.lambda_log_group_name
@@ -134,7 +124,7 @@ module "acm" {
 
   name_prefix    = local.name_prefix
   domain_name    = var.domain_name
-  hosted_zone_id = data.aws_route53_zone.main.zone_id
+  hosted_zone_id = module.route53.hosted_zone_id
   tags           = local.default_tags
 }
 
@@ -159,4 +149,6 @@ module "route53" {
   domain_name               = var.domain_name
   cloudfront_domain_name    = module.cloudfront.distribution_domain_name
   cloudfront_hosted_zone_id = module.cloudfront.distribution_hosted_zone_id
+  name_prefix               = var.name_prefix
+  tags                      = var.tags
 }

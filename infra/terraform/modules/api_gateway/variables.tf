@@ -58,7 +58,7 @@ variable "throttling_rate_limit" {
 variable "log_retention_in_days" {
   description = "CloudWatch log retention in days."
   type        = number
-  default     = 30
+  default     = 3
 }
 
 variable "tags" {

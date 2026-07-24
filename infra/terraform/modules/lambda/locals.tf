@@ -1,3 +1,3 @@
 locals {
-  handler = "handler.handler"
+  handler = "main.handler"
 }

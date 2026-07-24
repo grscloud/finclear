@@ -16,6 +16,11 @@ variable "project_name" {
   default     = "finclear"
 }
 
+
+################################
+# Domain
+################################
+
 variable "domain_name" {
   description = "Application domain name."
   type        = string
@@ -28,6 +33,11 @@ variable "hosted_zone_name" {
   default     = "grs-co.jp"
 }
 
+
+################################
+# Network
+################################
+
 variable "vpc_cidr" {
   description = "CIDR block for the VPC."
   type        = string
@@ -37,20 +47,34 @@ variable "vpc_cidr" {
 variable "public_subnet_cidrs" {
   description = "CIDR blocks for public subnets."
   type        = list(string)
-  default     = ["10.1.1.0/24", "10.1.2.0/24"]
+  default = [
+    "10.1.1.0/24",
+    "10.1.2.0/24"
+  ]
 }
 
 variable "private_subnet_cidrs" {
   description = "CIDR blocks for private subnets."
   type        = list(string)
-  default     = ["10.1.10.0/24", "10.1.20.0/24"]
+  default = [
+    "10.1.10.0/24",
+    "10.1.20.0/24"
+  ]
 }
 
 variable "availability_zones" {
   description = "Availability zones for subnet placement."
   type        = list(string)
-  default     = ["ap-northeast-1a", "ap-northeast-1c"]
+  default = [
+    "ap-northeast-1a",
+    "ap-northeast-1c"
+  ]
 }
+
+
+################################
+# Database
+################################
 
 variable "db_name" {
   description = "PostgreSQL database name."
@@ -62,6 +86,12 @@ variable "db_username" {
   description = "PostgreSQL master username."
   type        = string
   default     = "finclear_admin"
+}
+
+variable "db_password" {
+  description = "PostgreSQL master password."
+  type        = string
+  default     = "finclear_password"
 }
 
 variable "db_instance_class" {
@@ -79,19 +109,19 @@ variable "db_allocated_storage" {
 variable "db_max_allocated_storage" {
   description = "Maximum allocated storage for autoscaling in GB."
   type        = number
-  default     = 100
+  default     = 50
 }
 
 variable "db_engine_version" {
   description = "PostgreSQL engine version."
   type        = string
-  default     = "16.6"
+  default     = "16.9"
 }
 
 variable "db_backup_retention_period" {
   description = "Number of days to retain automated backups."
   type        = number
-  default     = 7
+  default     = 0
 }
 
 variable "db_deletion_protection" {
@@ -100,10 +130,15 @@ variable "db_deletion_protection" {
   default     = true
 }
 
+
+################################
+# Lambda
+################################
+
 variable "lambda_memory_size" {
   description = "Lambda function memory size in MB."
   type        = number
-  default     = 1024
+  default     = 256
 }
 
 variable "lambda_timeout" {
@@ -130,26 +165,52 @@ variable "lambda_log_level" {
   default     = "INFO"
 }
 
+
+################################
+# CloudFront
+################################
+
 variable "cloudfront_price_class" {
   description = "CloudFront distribution price class."
   type        = string
-  default     = "PriceClass_200"
+  default     = "PriceClass_100"
 }
+
+
+################################
+# Monitoring
+################################
 
 variable "log_retention_in_days" {
   description = "CloudWatch log retention period in days."
   type        = number
-  default     = 30
+  default     = 3
 }
+
+
+################################
+# Secrets
+################################
 
 variable "openai_api_key" {
   description = "OpenAI API key stored in SSM Parameter Store."
   type        = string
   sensitive   = true
+  default     = ""
 }
+
+
+################################
+# Tags
+################################
 
 variable "tags" {
   description = "Additional tags applied to all resources."
   type        = map(string)
   default     = {}
+}
+
+variable "name_prefix" {
+  type        = string
+  description = "Prefix for naming resources"
 }

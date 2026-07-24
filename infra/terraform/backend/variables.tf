@@ -15,3 +15,8 @@ variable "lock_table_name" {
   type        = string
   default     = "finclear-terraform-lock"
 }
+
+variable "name_prefix" {
+  type        = string
+  description = "Prefix for naming resources"
+}

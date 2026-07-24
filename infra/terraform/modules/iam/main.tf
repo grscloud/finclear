@@ -44,48 +44,6 @@ resource "aws_iam_policy" "cloudwatch_logs" {
   tags = var.tags
 }
 
-data "aws_iam_policy_document" "ssm_read" {
-  statement {
-    sid    = "SSMRead"
-    effect = "Allow"
-
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-      "ssm:GetParametersByPath",
-    ]
-
-    resources = [
-      "arn:aws:ssm:${var.aws_region}:${var.aws_account_id}:parameter${var.ssm_parameter_prefix}/*",
-    ]
-  }
-
-  statement {
-    sid    = "KMSDecryptForSSM"
-    effect = "Allow"
-
-    actions = [
-      "kms:Decrypt",
-    ]
-
-    resources = ["*"]
-
-    condition {
-      test     = "StringEquals"
-      variable = "kms:ViaService"
-      values   = ["ssm.${var.aws_region}.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_policy" "ssm_read" {
-  name        = "${var.name_prefix}-lambda-ssm-read"
-  description = "Allow Lambda to read SSM Parameter Store secrets"
-  policy      = data.aws_iam_policy_document.ssm_read.json
-
-  tags = var.tags
-}
-
 data "aws_iam_policy_document" "s3_access" {
   statement {
     sid    = "S3ObjectAccess"
@@ -141,11 +99,6 @@ resource "aws_iam_policy" "vpc_access" {
 resource "aws_iam_role_policy_attachment" "cloudwatch_logs" {
   role       = aws_iam_role.lambda_execution.name
   policy_arn = aws_iam_policy.cloudwatch_logs.arn
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_read" {
-  role       = aws_iam_role.lambda_execution.name
-  policy_arn = aws_iam_policy.ssm_read.arn
 }
 
 resource "aws_iam_role_policy_attachment" "s3_access" {

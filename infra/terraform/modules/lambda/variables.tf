@@ -53,9 +53,10 @@ variable "database_user" {
   type        = string
 }
 
-variable "ssm_parameter_path" {
-  description = "SSM parameter path prefix."
+variable "database_password" {
+  description = "Database password."
   type        = string
+  sensitive   = true
 }
 
 variable "bucket_name" {

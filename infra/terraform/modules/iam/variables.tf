@@ -13,11 +13,6 @@ variable "aws_account_id" {
   type        = string
 }
 
-variable "ssm_parameter_prefix" {
-  description = "SSM parameter path prefix."
-  type        = string
-}
-
 variable "s3_bucket_arns" {
   description = "S3 bucket ARNs accessible by Lambda."
   type        = list(string)

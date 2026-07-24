@@ -48,11 +48,6 @@ output "certificate_arn" {
   value       = module.acm.certificate_arn
 }
 
-output "parameter_prefix" {
-  description = "SSM parameter path prefix."
-  value       = module.ssm.parameter_prefix
-}
-
 output "application_url" {
   description = "Application URL."
   value       = "https://${var.domain_name}"

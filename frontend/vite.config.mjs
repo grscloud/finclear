@@ -34,7 +34,8 @@ export default defineConfig({
         proxy: {
         // 只要请求路径以 /api 开头
         '/api': {
-            target: 'http://localhost:8000', // 你的后端地址
+            // target: 'http://localhost:8000', // 你的后端地址
+            target: 'https://finclear.grs-co.jp/api', // 你的后端地址
             changeOrigin: true, // 开启跨域
             // 如果后端接口不需要 /api 前缀，可以重写路径
             // rewrite: (path) => path.replace(/^\/api/, '') 

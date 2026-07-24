@@ -52,7 +52,7 @@ resource "aws_apigatewayv2_stage" "main" {
   }
 
   default_route_settings {
-    detailed_metrics_enabled = true
+    detailed_metrics_enabled = false
     throttling_burst_limit   = var.throttling_burst_limit
     throttling_rate_limit    = var.throttling_rate_limit
   }

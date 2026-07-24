@@ -13,11 +13,6 @@ output "cloudwatch_logs_policy_arn" {
   value       = aws_iam_policy.cloudwatch_logs.arn
 }
 
-output "ssm_read_policy_arn" {
-  description = "SSM read policy ARN."
-  value       = aws_iam_policy.ssm_read.arn
-}
-
 output "s3_access_policy_arn" {
   description = "S3 access policy ARN."
   value       = aws_iam_policy.s3_access.arn

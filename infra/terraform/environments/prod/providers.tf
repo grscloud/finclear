@@ -17,11 +17,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "finclear-terraform-state"
-    key            = "prod/terraform.tfstate"
-    region         = "ap-northeast-1"
-    dynamodb_table = "finclear-terraform-lock"
-    encrypt        = true
+    bucket       = "finclear-terraform-state"
+    key          = "dev/terraform.tfstate"
+    region       = "ap-northeast-1"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 
