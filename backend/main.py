@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from mangum import Mangum
 from modules.iam.router import router as iam_router
 from modules.expense.router import router as expense_router
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +30,14 @@ app.include_router(expense_router)
 def health_check():
     return {"status": "ok"}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+
+@app.get("/")
+def root():
+    return {
+        "message": "FinClear API"
+    }
+
+handler = Mangum(app)
