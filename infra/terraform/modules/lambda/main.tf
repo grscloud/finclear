@@ -17,7 +17,7 @@ resource "aws_lambda_function" "main" {
   memory_size = var.memory_size
   timeout     = var.timeout
 
-vpc_config {
+  vpc_config {
     subnet_ids         = var.private_subnet_ids
     security_group_ids = var.security_group_ids
   }
@@ -30,6 +30,8 @@ vpc_config {
       DATABASE_PASSWORD = var.database_password
       BUCKET_NAME       = var.bucket_name
       LOG_LEVEL         = var.log_level
+      DATABASE_URL = var.database_url
+      # DATABASE_URL = "postgresql+asyncpg://${var.database_user}:${var.database_password}@${aws_db_instance.main.address}:5432/${var.database_name}"
     }
   }
 

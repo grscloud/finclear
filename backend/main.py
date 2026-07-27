@@ -10,6 +10,7 @@ app = FastAPI(title="SaaS 后端 API", version="1.0.0")
 origins = [
     "http://localhost:5173",  # 你的前端地址
     "http://127.0.0.1:5173",  # 有时候浏览器会识别为 IP 地址，建议加上
+    "https://finclear.grs-co.jp",  # 有时候浏览器会识别为 IP 地址，建议加上
 ]
 
 # 添加中间件

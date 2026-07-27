@@ -297,7 +297,8 @@ const removeReceipt = (index) => {
             </Column>
             <Column field="total_amount" header="金額" style="min-width: 120px">
                 <template #body="{ data }">
-                    ¥{{ data.total_amount.toLocaleString() }}
+                    <!-- ¥{{ data.total_amount.toLocaleString() }} -->
+                    ¥{{ data.total_amount }}
                 </template>
             </Column>
             <Column field="status" header="ステータス" style="min-width: 120px">

@@ -28,7 +28,7 @@ async def get_s3_presigned_url(filename: str, current_user = Depends(get_current
     url = s3_client.generate_presigned_url(
         'put_object',
         Params={
-            'Bucket': settings.S3_INVOICE_BUCKET,
+            'Bucket': settings.BUCKET_NAME,
             'Key': s3_key
         },
         ExpiresIn=3600

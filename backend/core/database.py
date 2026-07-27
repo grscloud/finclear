@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from core.config import settings
 
 # 1. 确保使用异步驱动 (asyncpg)
-ASYNC_DB_URL = settings.database_url
+ASYNC_DB_URL = settings.DATABASE_URL
 # if raw_db_url.startswith("postgresql://"):
 #     # 将标准的 postgresql:// 替换为异步的 postgresql+asyncpg://
 #     ASYNC_DB_URL = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)

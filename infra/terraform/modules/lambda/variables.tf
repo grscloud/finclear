@@ -79,3 +79,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "database_url" {
+  type        = string
+  description = "Database connection URL for Lambda environment"
+}

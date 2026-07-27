@@ -55,15 +55,15 @@ module "s3" {
   tags = local.default_tags
 }
 
-  module "iam" {
-    source = "../../modules/iam"
+module "iam" {
+  source = "../../modules/iam"
 
-    name_prefix    = local.name_prefix
-    aws_region     = var.aws_region
-    aws_account_id = data.aws_caller_identity.current.account_id
-    s3_bucket_arns = values(module.s3.bucket_arns)
-    tags           = local.default_tags
-  }
+  name_prefix    = local.name_prefix
+  aws_region     = var.aws_region
+  aws_account_id = data.aws_caller_identity.current.account_id
+  s3_bucket_arns = values(module.s3.bucket_arns)
+  tags           = local.default_tags
+}
 
 module "cloudwatch" {
   source = "../../modules/cloudwatch"
@@ -89,6 +89,7 @@ module "lambda" {
   database_name      = var.db_name
   database_user      = var.db_username
   database_password  = var.db_password
+  database_url       = "postgresql+asyncpg://${var.db_username}:${var.db_password}@${module.rds.db_address}:5432/${var.db_name}"
   bucket_name        = module.s3.application_bucket_name
   log_level          = var.lambda_log_level
   log_group_name     = module.cloudwatch.lambda_log_group_name

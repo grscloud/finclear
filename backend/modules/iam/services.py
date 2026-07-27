@@ -319,6 +319,7 @@ async def get_all_companies(db: AsyncSession, page: int, limit: int, is_superuse
     
     if not is_superuser:
         stmt = stmt.where(Company.id == company_id)
+    print(stmt)
     # 异步 count
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = await db.scalar(count_stmt)
