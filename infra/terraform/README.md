@@ -16,8 +16,7 @@ CloudFront
    └── /api/* behavior  → HTTP API Gateway → Lambda (FastAPI/Mangum)
                                               │
                                               ├── RDS PostgreSQL (private)
-                                              ├── S3 (application storage)
-                                              └── SSM Parameter Store (secrets)
+                                              └── S3 (application storage)
 ```
 
 | Component | Technology |
@@ -26,7 +25,6 @@ CloudFront
 | Backend | FastAPI → Mangum → Lambda → HTTP API |
 | Database | Amazon RDS PostgreSQL |
 | File Storage | Amazon S3 |
-| Secrets | AWS Systems Manager Parameter Store |
 | DNS | Amazon Route53 |
 | Certificate | AWS ACM (us-east-1 for CloudFront) |
 | Monitoring | Amazon CloudWatch |
@@ -43,7 +41,6 @@ terraform/
 ├── modules/
 │   ├── network/
 │   ├── iam/
-│   ├── ssm/
 │   ├── rds/
 │   ├── s3/
 │   ├── lambda/
@@ -97,7 +94,7 @@ terraform apply
 
 ### Step 2: Configure Environment Variables
 
-Edit the target environment `terraform.tfvars` and set a real value for `openai_api_key`:
+Edit the target environment `terraform.tfvars` and configure the environment-specific variables.
 
 ```bash
 # environments/dev/terraform.tfvars
@@ -188,7 +185,6 @@ Environment differences are controlled exclusively through `terraform.tfvars` an
 | `lambda_log_level` | Application log level | `INFO` |
 | `cloudfront_price_class` | CloudFront price class | `PriceClass_200` |
 | `log_retention_in_days` | CloudWatch retention | `30` |
-| `openai_api_key` | OpenAI API key (SSM) | required |
 | `tags` | Additional resource tags | `{}` |
 
 ## Outputs
@@ -205,7 +201,6 @@ Environment differences are controlled exclusively through `terraform.tfvars` an
 | `database_endpoint` | RDS connection endpoint |
 | `hosted_zone_id` | Route53 hosted zone ID |
 | `certificate_arn` | ACM certificate ARN |
-| `parameter_prefix` | SSM parameter path prefix |
 | `application_url` | Public application URL |
 
 ## Resource Naming
@@ -232,9 +227,8 @@ Environment = dev|prod
 ## Security Notes
 
 - RDS and Lambda run in private subnets; RDS is not publicly accessible.
-- SSM parameters are stored as `SecureString`.
 - S3 buckets block public access; frontend access is via CloudFront OAC only.
-- IAM policies follow least privilege for Lambda (CloudWatch Logs, SSM read, S3 access, VPC ENI).
+- IAM policies follow least privilege for Lambda (CloudWatch Logs, S3 access, and VPC ENI).
 
 ## License
 
