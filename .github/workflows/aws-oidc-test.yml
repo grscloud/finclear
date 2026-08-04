@@ -1,35 +1,30 @@
-name: AWS OIDC Auth Test
+name: AWS OIDC Test
 
-# 当推送到 main 分支时触发
 on:
   push:
     branches:
       - main
+  workflow_dispatch: # 允许你手动在网页上点击运行
 
-# 必须显式声明权限，允许获取 OIDC token
+# 这里的权限声明是 OIDC 成功的关键
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  test-aws-oidc:
+  test-auth:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 使用官方 action 配置凭证
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          # 直接把 ARN 写死在这里测试，排除 Secret 没读到的可能性
+          # 请把 "你的角色名称" 替换为真实的名字
+          role-to-assume: arn:aws:iam::333076556197:role/GitHubActions-OIDC-Role
           aws-region: ap-northeast-1
 
-      # 验证是否成功连接
-      - name: Test AWS CLI
-        run: |
-          echo "验证当前调用者身份："
-          aws sts get-caller-identity
-          
-          echo "尝试列出 S3 存储桶（测试我们附加的 S3 只读权限）："
-          aws s3 ls
+      - name: Test AWS Identity
+        run: aws sts get-caller-identity
