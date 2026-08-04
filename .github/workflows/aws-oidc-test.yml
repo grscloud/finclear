@@ -1,0 +1,35 @@
+name: AWS OIDC Auth Test
+
+# 当推送到 main 分支时触发
+on:
+  push:
+    branches:
+      - main
+
+# 必须显式声明权限，允许获取 OIDC token
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-aws-oidc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 使用官方 action 配置凭证
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      # 验证是否成功连接
+      - name: Test AWS CLI
+        run: |
+          echo "验证当前调用者身份："
+          aws sts get-caller-identity
+          
+          echo "尝试列出 S3 存储桶（测试我们附加的 S3 只读权限）："
+          aws s3 ls
