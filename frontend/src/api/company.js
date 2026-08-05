@@ -35,4 +35,3 @@ export const deleteCompany = (id) => {
 export const updateCompanyById = (id, data) => {
   return request.put(`/v1/companies/${id}`, data);
 };
-
