@@ -36,22 +36,18 @@ jobs:
       - name: Install & Package Dependencies
         run: |
           mkdir -p package
-          # 针对 Lambda (Linux x86_64) 环境精准下载 Wheel 包（解决 Pydantic v2 等 C 扩展包兼容性问题）
-          pip install \
-            --platform manylinux2014_aarch64 \
-            --target ./package \
-            --implementation cp \
-            --python-version 3.13 \
-            --only-binary=:all: \
-            -r requirements.txt || pip install --target ./package -r requirements.txt
-
-          # 打包第三方依赖
+          
+          # 【修改点 2】使用你验证过的命令。去掉了之前的 || 降级逻辑，防止它在失败时回退到错误架构编译
+          pip install -r requirements.txt -t package -U --platform manylinux2014_aarch64 --python-version 3.13 --only-binary=:all:
+          
+          # 压缩第三方依赖
           cd package
           zip -r ../deployment.zip .
           cd ..
-
+          
           # 将 FastAPI 业务代码追加打包进 deployment.zip
           zip -g deployment.zip -r . -x "package/*" ".git*" "*__pycache__*" "*.pytest_cache*" "venv/*" "tests/*"
+
 
       - name: Deploy Code to AWS Lambda
         run: |
