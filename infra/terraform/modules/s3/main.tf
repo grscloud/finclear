@@ -122,3 +122,27 @@ resource "aws_s3_bucket_lifecycle_configuration" "buckets" {
     }
   }
 }
+
+#######################################
+# 6. CORS 配置 (针对需要浏览器直传的桶，例如发票桶 application)
+#######################################
+resource "aws_s3_bucket_cors_configuration" "buckets" {
+  # 💡 修改点 1：简化 for_each 逻辑，明确只为 "application" (发票/应用桶) 启用 CORS
+  for_each = { for k, v in aws_s3_bucket.buckets : k => v if k == "application" }
+
+  # 💡 修改点 2：直接使用 each.value.id 获取桶 ID
+  bucket = each.value.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "PUT", "POST", "HEAD"]
+    allowed_origins = [
+      "https://finclear.grs-co.jp",
+      # 为了方便本地开发时也能正常直传，建议把本地的开发端口也加上：
+      "http://localhost:5173", 
+      "http://localhost:3000"
+    ]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
